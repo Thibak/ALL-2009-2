@@ -821,3 +821,60 @@ data boll;
 run;
 
 %eventan (boll, TRF, iRF, 0,,&y,new_normkariotip,yn_e.,"Стратификация по кариотипу. Безрецидивная выживаемость");
+
+
+/*proc phreg data=a; 
+	model ВРЕМЯ*ИНДИКАТОР_ЦЕНЗУРИРОВАНИЯ(0)= ФАКТОР1 ФАКТОР2; 
+run; */
+
+proc phreg data=&LN..LM; 
+	model TLive_LM*i_death(0)=new_vnutrigrud_ulu	new_splenomeg BMT reg 	/ selection = s slentry = .3 slstay = .15;  
+	title "Ландмарк.  Общая выживаемость";
+run; 
+
+proc phreg data=&LN..LM; 
+	model TRF_LM*iRF(0)= BMT reg new_normkariotip FRint new_molegen	
+new_mogen_tcr	
+new_mogen_igh	
+new_mogen_t922	
+new_mogen_t411		
+new_neyrolek	
+new_splenomeg	
+new_gepatomeg	
+new_uvsredosten	
+new_inf_donow_ter	
+new_gemorag_sindr	
+new_peref_ulu	
+new_vnutrigrud_ulu	
+new_abdomi_ulu	
+new_ekstramod	
+new_skin_eo	
+new_gonad_eo	
+new_testis_eo	
+new_intratumor_eo	/ selection = s slentry = .3 slstay = .15;  
+	title "Ландмарк. Безрецидивная выживаемость";
+run; 
+
+proc phreg data=&LN..LM; 
+	model Trel_LM*i_rel(0)= BMT reg new_normkariotip FRint new_molegen	
+new_mogen_tcr	
+new_mogen_igh	
+new_mogen_t922	
+new_mogen_t411		
+new_neyrolek	
+new_splenomeg	
+new_gepatomeg	
+new_uvsredosten	
+new_inf_donow_ter	
+new_gemorag_sindr	
+new_peref_ulu	
+new_vnutrigrud_ulu	
+new_abdomi_ulu	
+new_ekstramod	
+new_skin_eo	
+new_gonad_eo	
+new_testis_eo	
+new_intratumor_eo	/ selection = s slentry = .3 slstay = .15;   
+	title "Ландмарк. Вероятность развития рецидива";
+run; 
+

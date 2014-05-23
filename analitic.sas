@@ -545,13 +545,67 @@ Data &LN..new_pt;
         otherwise;
     end;
 	
+*проставляем новые ппороговые показатели;
+
+	*бластные клетки;
 	Select; 
 		when (blast_km => 5) BMinv = 1; 
 		when (blast_km = .) BMinv = .;
 		when (blast_km  < 5) BMinv = 0;
-
 		otherwise;
 	end; 
+
+	*лейкоциты;
+    select (oll_class);
+		when (2) do; *T-oll;
+			select;
+				when (new_l<100) l_b = 0;
+				when (new_l>100) l_b = 1;
+				when (new_l = .) l_b = .;
+				otherwise l_b=.;
+			end; end;
+		when (1) do; *B-oll;
+			select;
+				when (new_l<30) l_b = 0;
+				when (new_l>30) l_b = 1;
+				when (new_l = .) l_b = .;
+				otherwise a=.;
+			end; end;
+		otherwise l_b =.;
+	end;
+
+	*креатинин;
+		select;
+			when (new_creatinine < 120) creatinine_b = 0;
+			when (new_creatinine > 120) creatinine_b = 1;
+			when (new_creatinine = .)   creatinine_b=.;
+			otherwise creatinine_b=.;
+		end; 
+
+	*Билирубин;
+		select;
+			when (new_bilirubin < 30) bilirubin_b = 0;
+			when (new_bilirubin > 30) bilirubin_b = 1;
+			when (new_bilirubin = .)  bilirubin_b=.;
+			otherwise bilirubin_b=.;
+		end; 
+
+	*Альбумин;
+		select;
+			when (new_albumin > 35) albumin_b = 0;
+			when (new_albumin < 35) albumin_b = 1;
+			when (new_albumin = .)  albumin_b=.;
+			otherwise albuminn_b=.;
+		end; 
+
+	*ЛДГ;
+		select;
+			when (new_ldh < 750) ldh_b = 0;
+			when (new_ldh > 750) ldh_b = 1;
+			when (new_ldh = .)  ldh_b=.;
+			otherwise ldh_b=.;
+		end; 
+
 
 	*Определяем событие смерть в ремиссии;
 
@@ -625,6 +679,8 @@ data &LN..LM;
 		otherwise;
 	end;
 run; 
+
+
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -710,8 +766,6 @@ proc means data=&LN..new_pt median max min;
    var new_l;
    title 'Лейкоциты';
 run;
-
-
 proc sort data = &LN..new_pt;
 	by age;
 run;
@@ -723,17 +777,43 @@ proc means data=&LN..new_pt median max min;
    FORMAT age age_group_f.;
 run;
 
+proc sgplot data=&LN..new_pt;
+	histogram new_l/SCALE= COUNT;
+/*  density new_l/ TYPE =  KERNEL;*/
+	title 'Лейкоциты';
+run;
+
+proc sgplot data=&LN..new_pt;
+	by age;
+	histogram new_l/SCALE= COUNT;
+/*  density new_l/ TYPE =  KERNEL;*/
+	title 'Лейкоциты';
+	FORMAT age age_group_f.;
+run;
 proc means data=&LN..new_pt median max min; 
    var new_ldh;
    title 'ЛДГ';
 run;
-
 
 proc means data=&LN..new_pt median max min; 
 	by age;
    var new_ldh;
    title 'ЛДГ';
    FORMAT age age_group_f.;
+run;
+
+proc sgplot data=&LN..new_pt;
+	histogram new_ldh/SCALE= COUNT;
+/*  density new_l/ TYPE =  KERNEL;*/
+	title 'ЛДГ';
+run;
+
+proc sgplot data=&LN..new_pt;
+	by age;
+	histogram new_ldh/SCALE= COUNT;
+/*  density new_l/ TYPE =  KERNEL;*/
+	title 'ЛДГ';
+	FORMAT age age_group_f.;
 run;
 
 proc freq data=&LN..new_pt ;
@@ -833,6 +913,54 @@ data boll;
 run;
 
 %eventan (boll, TRF, iRF, 0,,&y,new_normkariotip,yn_e.,"Стратификация по кариотипу. Безрецидивная выживаемость");
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------ Мультивариантный анализ ----------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------*/
+
+
+/*6.  Мультивариантный анализ (отдельно для В-ОЛЛ, Т-ОЛЛ, и потом для всех*/
+/*вместе):*/
+/**/
+/*А. Достижение полной ремиссии и смерть в период индукции(параметры, которые надо включить в анализ:*/
+/**/
+/*пол, возраст, иммунофенотип, группа риска, */
+/*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, */
+/*- число тромбоцитов - ???, */
+/*- креатинин более 120, */
+/*- билирубин более 30, */
+/*- альбумин менее 35, */
+/*- смена на дексаметазон, */
+/*- нормальный кариотип или аномальный, */
+/*- ЛДГ более 750*/
+/**/
+/*Б. Общая выживаемость */
+/*- пол, возраст (до 30 и с 30 и старше), */
+/*- иммунофенотип, */
+/*- группа риска, */
+/*- ЛДГ более 750, */
+/*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, */
+/*- смена на дексаметазон, */
+/*- нормальный кариотип или аномальный, */
+/*- достижение ремиссии после 1 (включая предфазу) или 2-й фазы лечения, */
+/*- выполнение аутологичной ТКМ, - выполнение аллогенной ТКМ*/
+/**/
+/*В. Безрецидивная выживаемость */
+/*- пол, */
+/*- возраст (до 30 и с 30 и старше), */
+/*- иммунофенотип, */
+/*- группа риска, */
+/*- ЛДГ более 750, */
+/*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, */
+/*- смена на дексаметазон, */
+/*- нормальный кариотип или аномальный, */
+/*- достижение ремиссии после 1 (включая предфазу) или 2-й фазы лечения,*/
+/*- полная отмена Л-аспарагиназы, */
+/*- выполнение аутологичной ТКМ, */
+/*- выполнение аллогенной ТКМ*/
 
 
 /*proc phreg data=a; 

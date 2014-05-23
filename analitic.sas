@@ -91,7 +91,7 @@ proc format;
     value age_group_28_f low-28 = "до 28-ми лет" 28-high = "после 28-ми лет";
     value age_group_30_f low-30 = "до 30-ти лет" 30-high = "после 30-ти лет";
     value age_group_33_f low-33 = "до 33-х лет" 33-high = "после 33-х лет";
-	value age_group_f low-30 = "AYA" 30-high = "Adult";
+	value age_group_f low-29 = "AYA" 29-high = "Adult";
 	value tkm_f 0="нет" 1="ауто" 2="алло";
 	value it_f 1="есть" 0 = "нет";
 	value time_error_f . = "нет ошибок" 
@@ -110,7 +110,7 @@ proc format;
 	value reg_f 0 = "Регионы" 1 = "ГНЦ"; 
 	value T_class12_f 0 = "T1+T2" 1 = "T3" 2 = "T4";
 	value T_class124_f 0 = "T1+T2+T4" 1 = "T3";
-	value TR_f 0 = "Полная ремиссия" 1 = "Смерть в индукции" 2 = "Резистентная форма";
+	value TR_f 0 = "Полная ремиссия" 1 = "Резистентная форма" 2 = "Смерть в индукции";
 	value BMinv_f 0 = "Без поражения" 1 = "С поражением";
 	value AAC_f 0 = "Химиотерапия" 1 = "Ауто ТКМ" 2 = "Алло ТКМ" 3 = "Ранний рецидив" 4 = "Смерть в ремиссии" 5 = "на индукции (T < 5 мес)";
 	value FRint_f 0 = "ПР на другой фазе" 1 = "ПР на 1-ой фазе индукции" 2 = "ПР на 2-ой фазе индукции";
@@ -282,12 +282,11 @@ run;
 data &LN..new_pt /*(keep=)*/;
     set &LN..new_et;
     by pguid;
-    retain ec d_ch faza time_error ind1bg ind1end ind2bg ind2end; *ec -- это количество этапов "свернутых";
+    retain ec d_ch time_error ind1bg ind1end ind2bg ind2end; *ec -- это количество этапов "свернутых";
     if first.pguid then 
 		do;  
 			ec = 0; 
-			d_ch = 0; 
-			faza = .; 
+			d_ch = .;  
 			time_error = .; 
 			ind1bg = .; 
 			ind1end = .; 
@@ -302,23 +301,22 @@ data &LN..new_pt /*(keep=)*/;
     if ph_b > lastdate then do; lastdate = ph_b; time_error = 1; end;
     if ph_e > lastdate and time_error = 0 then do; lastdate = ph_e; end;
 	if ph_e > lastdate then do; lastdate = ph_e; time_error = 1; end;
-	
+
+	if new_etap_protokol = 1 then do; 	
+		if new_smena_na_deksamet = 1 then d_ch = 1;
+		if new_smena_na_deksamet = 0 then d_ch = 0;
+		end;
 	if new_etap_protokol = 2 then do; ind1bg = ph_b; ind1end = ph_e; end;
 	if new_etap_protokol = 3 then do; ind2bg = ph_b; ind2end = ph_e; end;
 
-if new_smena_na_deksamet = 1 then
-        do;
-            d_ch = 1;
-            faza = new_etap_protokol;
-        end;
+
 /*---------------------------------------------------*/
     if last.pguid then
         do;
 			*if time_error ne . then output &LN..error_timeline;
 
             output &LN..new_pt;
-            d_ch = 0;
-            faza = .;
+            d_ch = .;
 			time_error = .;
 			ind1bg = .; 
 			ind1end = .; 
@@ -774,24 +772,24 @@ proc freq data=&LN..new_pt ORDER = DATA;
    title 'Результаты терапии';
    format age age_group_f.;
 run;
-
-proc freq data=&LN..LM ORDER = DATA;
-   tables TR / nocum;
-   title 'Результаты терапии (Ландмарк)';
-   format TR TR_f.;
-run;
-
-proc freq data=&LN..NLM ORDER = DATA;
-   tables TR / nocum;
-   title 'Выбраковка (Ландмарк)';
-   format TR TR_f.;
-run;
-
-proc freq data=&LN..NLM ORDER = DATA;
-   tables onT / nocum;
-   title 'Выбраковка (Ландмарк) на лечении';
-   format TR TR_f.;
-run;
+/**/
+/*proc freq data=&LN..LM ORDER = DATA;*/
+/*   tables TR / nocum;*/
+/*   title 'Результаты терапии (Ландмарк)';*/
+/*   format TR TR_f.;*/
+/*run;*/
+/**/
+/*proc freq data=&LN..NLM ORDER = DATA;*/
+/*   tables TR / nocum;*/
+/*   title 'Выбраковка (Ландмарк)';*/
+/*   format TR TR_f.;*/
+/*run;*/
+/**/
+/*proc freq data=&LN..NLM ORDER = DATA;*/
+/*   tables onT / nocum;*/
+/*   title 'Выбраковка (Ландмарк) на лечении';*/
+/*   format TR TR_f.;*/
+/*run;*/
 
 proc freq data=&LN..new_pt ;
    tables TR*age/ nocum;
@@ -800,10 +798,24 @@ proc freq data=&LN..new_pt ;
 run;
 
 proc freq data=&LN..new_pt ;
-   tables  d_ch*age/ nocum;
+   tables  d_ch*new_group_riskname/ nocum;
    title 'Смена на дексаметазон по группам риска';
+   format d_ch y_n.;
+run;
+
+proc freq data=&LN..new_pt ;
+   tables  d_ch*age/ nocum;
+   title 'Смена на дексаметазон по возрастным группам';
    format age age_group_f. d_ch y_n.;
 run;
+
+proc freq data=&LN..new_pt ;
+   tables  new_group_riskname*age/ nocum;
+   title 'группы риска по возрастным группам';
+   format age age_group_f.;
+run;
+
+
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -828,12 +840,12 @@ run;
 run; */
 
 proc phreg data=&LN..LM; 
-	model TLive_LM*i_death(0)=new_vnutrigrud_ulu	new_splenomeg BMT reg 	/ selection = s slentry = .3 slstay = .15;  
+	model TLive_LM*i_death(0)=reg new_vnutrigrud_ulu	new_splenomeg BMT  BMinv	/ selection = s slentry = .3 slstay = .15;  
 	title "Ландмарк.  Общая выживаемость";
 run; 
 
 proc phreg data=&LN..LM; 
-	model TRF_LM*iRF(0)= BMT reg new_normkariotip FRint new_molegen	
+	model TRF_LM*iRF(0)= BMT reg new_normkariotip FRint new_molegen	BMinv
 new_mogen_tcr	
 new_mogen_igh	
 new_mogen_t922	
@@ -856,7 +868,7 @@ new_intratumor_eo	/ selection = s slentry = .3 slstay = .15;
 run; 
 
 proc phreg data=&LN..LM; 
-	model Trel_LM*i_rel(0)= BMT reg new_normkariotip FRint new_molegen	
+	model Trel_LM*i_rel(0)= BMT reg new_normkariotip FRint new_molegen	BMinv
 new_mogen_tcr	
 new_mogen_igh	
 new_mogen_t922	

@@ -816,6 +816,10 @@ proc sgplot data=&LN..new_pt;
 	FORMAT age age_group_f.;
 run;
 
+
+
+/*сделать подвыборку только для тех, у кого проставлены лейкоциты. Т.е. вообще сделать такой параметр, как "качественно заполненные данные"*/
+
 proc freq data=&LN..new_pt ;
    tables new_neyrolekname*age / nocum;
    title 'Нейролейкемия';

@@ -606,6 +606,11 @@ Data &LN..new_pt;
 			otherwise ldh_b=.;
 		end; 
 
+	*заслуживающие доверия записи;
+/*		veritable records -- vr*/
+
+		if (new_hb ne . or	new_l ne . or	new_tp ne . or	new_blast_km ne . or	new_blast_pk ne . or	new_creatinine ne . or	new_bilirubin ne . or	new_ldh ne . or	new_albumin ne . or	new_protromb_ind ne . or	new_dlin_rs ne . or	new_poperech_rs )
+then vr = 1; else vr = 0;
 
 	*Определяем событие смерть в ремиссии;
 
@@ -618,6 +623,7 @@ Data &LN..new_pt;
 	label BMinv = "Поражение костного мозга";
 
 run;
+
 
 *---------        Исход лечения         ---------;
 
@@ -681,8 +687,20 @@ data &LN..LM;
 run; 
 
 
+data &LN..vr_pt;
+	set &LN..new_pt;
+	if vr;
+run;
 
+data boll;
+	set &LN..new_pt;
+	if (oll_class = 1);
+run;
 
+data toll;
+	set &LN..new_pt;
+	if (oll_class = 2);
+run;
 /*-----------------------------------------------------------------------------------------------------------*/
 /*-----------------------------------------------------------------------------------------------------------*/
 /*--------------------------------------------описательная статистика----------------------------------------*/
@@ -693,6 +711,11 @@ run;
 proc means data = &LN..new_pt N;
 	var new_birthdate;
    title 'Всего записей';
+run;
+
+proc freq data=&LN..new_pt ORDER = DATA;
+   tables vr / nocum;
+   title 'Заслуживающих доверия записей';
 run;
 
 proc means data = &LN..new_pt median max min ;
@@ -820,7 +843,7 @@ run;
 
 /*сделать подвыборку только для тех, у кого проставлены лейкоциты. Т.е. вообще сделать такой параметр, как "качественно заполненные данные"*/
 
-proc freq data=&LN..new_pt ;
+proc freq data=&LN..vr_pt ;
    tables new_neyrolekname*age / nocum;
    title 'Нейролейкемия';
    format age age_group_f.;
@@ -881,19 +904,19 @@ proc freq data=&LN..new_pt ;
    format age age_group_f. TR TR_f.;
 run;
 
-proc freq data=&LN..new_pt ;
+proc freq data=&LN..vr_pt ;
    tables  d_ch*new_group_riskname/ nocum;
    title 'Смена на дексаметазон по группам риска';
    format d_ch y_n.;
 run;
 
-proc freq data=&LN..new_pt ;
+proc freq data=&LN..vr_pt ;
    tables  d_ch*age/ nocum;
    title 'Смена на дексаметазон по возрастным группам';
    format age age_group_f. d_ch y_n.;
 run;
 
-proc freq data=&LN..new_pt ;
+proc freq data=&LN..vr_pt ;
    tables  new_group_riskname*age/ nocum;
    title 'группы риска по возрастным группам';
    format age age_group_f.;
@@ -911,12 +934,9 @@ run;
 %eventan (&LN..new_pt, TLive, i_death, 0,,&y,age,age_group_f.,"стратификация по возрасту. Выживаемость");
 %eventan (&LN..new_pt, TRF, iRF, 0,,&y,age,age_group_f.,"стратификация по возрасту. Безрецидивная выживаемость");
 
-data boll;
-	set &LN..new_pt;
-		if (oll_class = 1);
-run;
 
-%eventan (boll, TRF, iRF, 0,,&y,new_normkariotip,yn_e.,"Стратификация по кариотипу. Безрецидивная выживаемость");
+
+%eventan (boll, TRF, iRF, 0,,&y,new_normkariotip,yn_e.,"B-oll. Стратификация по кариотипу. Безрецидивная выживаемость");
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -926,11 +946,11 @@ run;
 /*-----------------------------------------------------------------------------------------------------------*/
 
 
-proc sgpanel data=sashelp.class;
- panelby sex /
-    uniscale=row;
- histogram height;
-run;
+/*proc sgpanel data=sashelp.class;*/
+/* panelby sex /*/
+/*    uniscale=row;*/
+/* histogram height;*/
+/*run;*/
 
 /*6.  Мультивариантный анализ (отдельно для В-ОЛЛ, Т-ОЛЛ, и потом для всех*/
 /*вместе):*/
@@ -977,7 +997,27 @@ run;
 	model ВРЕМЯ*ИНДИКАТОР_ЦЕНЗУРИРОВАНИЯ(0)= ФАКТОР1 ФАКТОР2; 
 run; */
 
-proc phreg data=&LN..LM; 
+/*для b-oll*/
+
+/*Достижение полной ремиссии и смерть в период индукции*/
+
+proc phreg data=&LN..boll; 
+	model TLive*i_death(0)=reg new_vnutrigrud_ulu	new_splenomeg BMT  BMinv	/ selection = s slentry = .3 slstay = .15;  
+	title "B-oll. Мультивариантный анализ. Общая выживаемость";
+run; 
+
+proc phreg data=&LN..boll; 
+	model TRF*iRF(0)= BMT reg new_normkariotip FRint new_molegen	BMinv
+	/ selection = s slentry = .3 slstay = .15;  
+	title "B-oll. Мультивариантный анализ. Безрецидивная выживаемость";
+run; 
+
+
+
+
+
+
+proc phreg data=&LN..new_pt; 
 	model TLive_LM*i_death(0)=reg new_vnutrigrud_ulu	new_splenomeg BMT  BMinv	/ selection = s slentry = .3 slstay = .15;  
 	title "Ландмарк.  Общая выживаемость";
 run; 

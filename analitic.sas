@@ -692,12 +692,12 @@ data &LN..vr_pt;
 	if vr;
 run;
 
-data boll;
+data &LN..boll;
 	set &LN..new_pt;
 	if (oll_class = 1);
 run;
 
-data toll;
+data &LN..toll;
 	set &LN..new_pt;
 	if (oll_class = 2);
 run;
@@ -874,7 +874,7 @@ run;
 
 proc freq data=&LN..new_pt ORDER = DATA;
    tables FRint*age / nocum;
-   title 'Результаты терапии';
+   title 'Достижение ПР на этапе';
    format age age_group_f.;
 run;
 /**/
@@ -956,39 +956,41 @@ run;
 /*А. Достижение полной ремиссии и смерть в период индукции(параметры, которые надо включить в анализ:*/
 /**/
 /*пол, возраст, иммунофенотип, группа риска, */
-/*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, */
+/*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, l_b*/
 /*- число тромбоцитов - ???, */
-/*- креатинин более 120, */
+/*- креатинин более 120, creatinine_b*/
 /*- билирубин более 30, */
 /*- альбумин менее 35, */
-/*- смена на дексаметазон, */
-/*- нормальный кариотип или аномальный, */
-/*- ЛДГ более 750*/
+/*- смена на дексаметазон, d_ch*/
+/*- нормальный кариотип или аномальный, new_normkariotipname*/
+/*- ЛДГ более 750 ldh_b*/
 /**/
+
 /*Б. Общая выживаемость */
-/*- пол, возраст (до 30 и с 30 и старше), */
-/*- иммунофенотип, */
-/*- группа риска, */
-/*- ЛДГ более 750, */
-/*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, */
-/*- смена на дексаметазон, */
-/*- нормальный кариотип или аномальный, */
-/*- достижение ремиссии после 1 (включая предфазу) или 2-й фазы лечения, */
-/*- выполнение аутологичной ТКМ, - выполнение аллогенной ТКМ*/
+/*- пол, возраст (до 30 и с 30 и старше), new_gendercode age age_group_f.;*/
+/*- иммунофенотип, oll_class*/
+/*- группа риска, new_group_risk*/
+/*- ЛДГ более 750, ldh_b*/
+/*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, l_b*/
+/*- смена на дексаметазон, d_ch*/
+/*- нормальный кариотип или аномальный, new_normkariotip*/
+/*- достижение ремиссии после 1 (включая предфазу) или 2-й фазы лечения, FRint*/
+/*- выполнение аутологичной ТКМ, - выполнение аллогенной ТКМ tkm_au_al*/
 /**/
+
 /*В. Безрецидивная выживаемость */
-/*- пол, */
-/*- возраст (до 30 и с 30 и старше), */
-/*- иммунофенотип, */
-/*- группа риска, */
-/*- ЛДГ более 750, */
-/*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, */
-/*- смена на дексаметазон, */
-/*- нормальный кариотип или аномальный, */
-/*- достижение ремиссии после 1 (включая предфазу) или 2-й фазы лечения,*/
-/*- полная отмена Л-аспарагиназы, */
-/*- выполнение аутологичной ТКМ, */
-/*- выполнение аллогенной ТКМ*/
+/*- пол, new_gendercode*/
+/*- возраст (до 30 и с 30 и старше),  age age_group_f.;*/
+/*- иммунофенотип, oll_class*/
+/*- группа риска, new_group_risk*/
+/*- ЛДГ более 750, ldh_b*/
+/*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, l_b*/
+/*- смена на дексаметазон, d_ch*/
+/*- нормальный кариотип или аномальный, new_normkariotip*/
+/*- достижение ремиссии после 1 (включая предфазу) или 2-й фазы лечения, FRint*/
+/*- полная отмена Л-аспарагиназы, Laspot*/
+/*- выполнение аутологичной ТКМ, tkm_au_al*/
+/*- выполнение аллогенной ТКМ ------*/
 
 
 /*proc phreg data=a; 
@@ -997,72 +999,48 @@ run; */
 
 /*для b-oll*/
 
-/*Достижение полной ремиссии и смерть в период индукции*/
+/*Достижение полной ремиссии TR=0 и смерть в период индукции TR=2*/
+
 
 proc phreg data=&LN..boll; 
-	model TLive*i_death(0)=reg new_vnutrigrud_ulu	new_splenomeg BMT  BMinv	/ selection = s slentry = .3 slstay = .15;  
+	model TLive*i_death(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al
+/ selection = stepwise slentry = .3 slstay = .15 details;  
 	title "B-oll. Мультивариантный анализ. Общая выживаемость";
+	format age age_group_f.;
 run; 
 
 proc phreg data=&LN..boll; 
-	model TRF*iRF(0)= BMT reg new_normkariotip FRint new_molegen	BMinv
+	model TRF*iRF(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al Laspot
 	/ selection = s slentry = .3 slstay = .15;  
 	title "B-oll. Мультивариантный анализ. Безрецидивная выживаемость";
+	format age age_group_f.;
 run; 
 
 
-
-
-
-
-proc phreg data=&LN..new_pt; 
-	model TLive_LM*i_death(0)=reg new_vnutrigrud_ulu	new_splenomeg BMT  BMinv	/ selection = s slentry = .3 slstay = .15;  
-	title "Ландмарк.  Общая выживаемость";
+proc phreg data=&LN..toll; 
+	model TLive*i_death(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al
+/ selection = stepwise slentry = .3 slstay = .15 details;  
+	title "T-oll. Мультивариантный анализ. Общая выживаемость";
+	format age age_group_f.;
 run; 
 
-proc phreg data=&LN..LM; 
-	model TRF_LM*iRF(0)= BMT reg new_normkariotip FRint new_molegen	BMinv
-new_mogen_tcr	
-new_mogen_igh	
-new_mogen_t922	
-new_mogen_t411		
-new_neyrolek	
-new_splenomeg	
-new_gepatomeg	
-new_uvsredosten	
-new_inf_donow_ter	
-new_gemorag_sindr	
-new_peref_ulu	
-new_vnutrigrud_ulu	
-new_abdomi_ulu	
-new_ekstramod	
-new_skin_eo	
-new_gonad_eo	
-new_testis_eo	
-new_intratumor_eo	/ selection = s slentry = .3 slstay = .15;  
-	title "Ландмарк. Безрецидивная выживаемость";
+proc phreg data=&LN..toll; 
+	model TRF*iRF(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al Laspot
+	/ selection = s slentry = .3 slstay = .15;  
+	title "T-oll. Мультивариантный анализ. Безрецидивная выживаемость";
+	format age age_group_f.;
 run; 
 
-proc phreg data=&LN..LM; 
-	model Trel_LM*i_rel(0)= BMT reg new_normkariotip FRint new_molegen	BMinv
-new_mogen_tcr	
-new_mogen_igh	
-new_mogen_t922	
-new_mogen_t411		
-new_neyrolek	
-new_splenomeg	
-new_gepatomeg	
-new_uvsredosten	
-new_inf_donow_ter	
-new_gemorag_sindr	
-new_peref_ulu	
-new_vnutrigrud_ulu	
-new_abdomi_ulu	
-new_ekstramod	
-new_skin_eo	
-new_gonad_eo	
-new_testis_eo	
-new_intratumor_eo	/ selection = s slentry = .3 slstay = .15;   
-	title "Ландмарк. Вероятность развития рецидива";
+proc phreg data=&LN..new_pt;
+	model TLive*i_death(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al
+/ selection = stepwise slentry = .3 slstay = .15 details;  
+	title "Мультивариантный анализ. Общая выживаемость";
+	format age age_group_f.;
 run; 
 
+proc phreg data=&LN..new_pt;
+	model TRF*iRF(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al Laspot
+	/ selection = s slentry = .3 slstay = .15;  
+	title "Мультивариантный анализ. Безрецидивная выживаемость";
+	format age age_group_f.;
+run; 

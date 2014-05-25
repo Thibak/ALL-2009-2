@@ -806,13 +806,13 @@ proc sgplot data=&LN..new_pt;
 	title 'Лейкоциты';
 run;
 
-proc sgplot data=&LN..new_pt;
-	by age;
-	histogram new_l/SCALE= COUNT;
-/*  density new_l/ TYPE =  KERNEL;*/
-	title 'Лейкоциты';
-	FORMAT age age_group_f.;
+proc sgpanel data=&LN..new_pt;
+ panelby age /
+    uniscale=row;
+ histogram new_l/SCALE= COUNT;
+ FORMAT age age_group_f.;
 run;
+
 proc means data=&LN..new_pt median max min; 
    var new_ldh;
    title 'ЛДГ';
@@ -831,14 +831,12 @@ proc sgplot data=&LN..new_pt;
 	title 'ЛДГ';
 run;
 
-proc sgplot data=&LN..new_pt;
-	by age;
-	histogram new_ldh/SCALE= COUNT;
-/*  density new_l/ TYPE =  KERNEL;*/
-	title 'ЛДГ';
-	FORMAT age age_group_f.;
+proc sgpanel data=&LN..new_pt;
+ panelby age /
+    uniscale=row;
+ histogram new_lDH/SCALE= COUNT;
+ FORMAT age age_group_f.;
 run;
-
 
 
 /*сделать подвыборку только для тех, у кого проставлены лейкоциты. Т.е. вообще сделать такой параметр, как "качественно заполненные данные"*/
@@ -906,19 +904,19 @@ run;
 
 proc freq data=&LN..vr_pt ;
    tables  d_ch*new_group_riskname/ nocum;
-   title 'Смена на дексаметазон по группам риска';
+   title 'Смена на дексаметазон по группам риска (достоверные записи)';
    format d_ch y_n.;
 run;
 
 proc freq data=&LN..vr_pt ;
    tables  d_ch*age/ nocum;
-   title 'Смена на дексаметазон по возрастным группам';
+   title 'Смена на дексаметазон по возрастным группам (достоверные записи)';
    format age age_group_f. d_ch y_n.;
 run;
 
 proc freq data=&LN..vr_pt ;
    tables  new_group_riskname*age/ nocum;
-   title 'группы риска по возрастным группам';
+   title 'группы риска по возрастным группам (достоверные записи)';
    format age age_group_f.;
 run;
 

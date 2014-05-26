@@ -92,6 +92,7 @@ proc format;
     value age_group_30_f low-30 = "до 30-ти лет" 30-high = "после 30-ти лет";
     value age_group_33_f low-33 = "до 33-х лет" 33-high = "после 33-х лет";
 	value age_group_f low-29 = "AYA" 29-high = "Adult";
+	value triple_age_f low-30 = "1" 30-40 = "2" 40-high = "3";
 	value tkm_f 0="нет" 1="ауто" 2="алло";
 	value it_f 1="есть" 0 = "нет";
 	value time_error_f . = "нет ошибок" 
@@ -606,6 +607,11 @@ Data &LN..new_pt;
 			otherwise ldh_b=.;
 		end; 
 
+		select;
+			when (age < 30) ageg = 0;
+			when (age >= 30) ageg = 1;
+			otherwise ageg=.;
+		end; 
 	*заслуживающие доверия записи;
 /*		veritable records -- vr*/
 
@@ -954,17 +960,24 @@ run;
 /*вместе):*/
 /**/
 /*А. Достижение полной ремиссии и смерть в период индукции(параметры, которые надо включить в анализ:*/
-/**/
-/*пол, возраст, иммунофенотип, группа риска, */
+
+/*- пол, new_gendercode */
+/*- возраст, age age_group_f.*/
+/*- иммунофенотип, oll_class*/
+/*- группа риска, new_group_risk*/
 /*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, l_b*/
 /*- число тромбоцитов - ???, */
 /*- креатинин более 120, creatinine_b*/
-/*- билирубин более 30, */
-/*- альбумин менее 35, */
+/*- билирубин более 30, bilirubin_b*/
+/*- альбумин менее 35, albumin_b */
 /*- смена на дексаметазон, d_ch*/
-/*- нормальный кариотип или аномальный, new_normkariotipname*/
+/*- нормальный кариотип или аномальный, new_normkariotip*/
 /*- ЛДГ более 750 ldh_b*/
-/**/
+
+
+/*для этого надо использовать proc logistic*/
+
+
 
 /*Б. Общая выживаемость */
 /*- пол, возраст (до 30 и с 30 и старше), new_gendercode age age_group_f.;*/
@@ -972,11 +985,12 @@ run;
 /*- группа риска, new_group_risk*/
 /*- ЛДГ более 750, ldh_b*/
 /*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, l_b*/
-/*- смена на дексаметазон, d_ch*/
 /*- нормальный кариотип или аномальный, new_normkariotip*/
+
+/*- смена на дексаметазон, d_ch*/
 /*- достижение ремиссии после 1 (включая предфазу) или 2-й фазы лечения, FRint*/
 /*- выполнение аутологичной ТКМ, - выполнение аллогенной ТКМ tkm_au_al*/
-/**/
+
 
 /*В. Безрецидивная выживаемость */
 /*- пол, new_gendercode*/
@@ -985,8 +999,9 @@ run;
 /*- группа риска, new_group_risk*/
 /*- ЛДГ более 750, ldh_b*/
 /*- число лейкоцитов для В-ОЛЛ 30 тыс и более, для Т-ОЛЛ 100 тыс и более, l_b*/
-/*- смена на дексаметазон, d_ch*/
 /*- нормальный кариотип или аномальный, new_normkariotip*/
+
+/*- смена на дексаметазон, d_ch*/
 /*- достижение ремиссии после 1 (включая предфазу) или 2-й фазы лечения, FRint*/
 /*- полная отмена Л-аспарагиназы, Laspot*/
 /*- выполнение аутологичной ТКМ, tkm_au_al*/
@@ -1001,46 +1016,226 @@ run; */
 
 /*Достижение полной ремиссии TR=0 и смерть в период индукции TR=2*/
 
+proc logistic data=&LN..boll;
+   model i_rem(event='1')= new_gendercode age oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch new_normkariotip ldh_b
+                / selection=stepwise
+                  slentry=0.3
+                  slstay=0.1
+                  details;
+	title "B-oll. Достижение полной ремиссии";
+	format age age_group_f.;
+run;
+
+proc logistic data=&LN..boll;
+   model i_ind_death(event='1')= new_gendercode age oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch new_normkariotip ldh_b
+                / selection=stepwise
+                  slentry=0.3
+                  slstay=0.1
+                  details;
+	title "B-oll. Смерить в индукции";
+run;
 
 proc phreg data=&LN..boll; 
-	model TLive*i_death(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al
+	model TLive*i_death(0)= new_gendercode age oll_class new_group_risk ldh_b l_b new_normkariotip  
 / selection = stepwise slentry = .3 slstay = .15 details;  
 	title "B-oll. Мультивариантный анализ. Общая выживаемость";
 	format age age_group_f.;
 run; 
 
+/*d_ch FRint tkm_au_al*/
+
 proc phreg data=&LN..boll; 
-	model TRF*iRF(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al Laspot
+	model TRF*iRF(0)= new_gendercode age oll_class new_group_risk ldh_b l_b new_normkariotip 
 	/ selection = s slentry = .3 slstay = .15;  
 	title "B-oll. Мультивариантный анализ. Безрецидивная выживаемость";
 	format age age_group_f.;
 run; 
+/*d_ch  FRint tkm_au_al Laspot*/
 
+
+
+
+
+
+
+proc logistic data=&LN..toll;
+   model i_rem(event='1')= new_gendercode age oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch new_normkariotip ldh_b
+                / selection=stepwise
+                  slentry=0.3
+                  slstay=0.1
+                  details;
+	title "T-oll. Достижение полной ремиссии";
+	format age age_group_f.;
+run;
+
+proc logistic data=&LN..toll;
+   model i_ind_death(event='1')= new_gendercode age oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch new_normkariotip ldh_b
+                / selection=stepwise
+                  slentry=0.3
+                  slstay=0.1
+                  details;
+	title "T-oll. Смерить в индукции";
+run;
 
 proc phreg data=&LN..toll; 
-	model TLive*i_death(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al
+	model TLive*i_death(0)= new_gendercode age oll_class new_group_risk ldh_b l_b new_normkariotip  
 / selection = stepwise slentry = .3 slstay = .15 details;  
 	title "T-oll. Мультивариантный анализ. Общая выживаемость";
 	format age age_group_f.;
 run; 
 
 proc phreg data=&LN..toll; 
-	model TRF*iRF(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al Laspot
+	model TRF*iRF(0)= new_gendercode age oll_class new_group_risk ldh_b l_b new_normkariotip 
 	/ selection = s slentry = .3 slstay = .15;  
 	title "T-oll. Мультивариантный анализ. Безрецидивная выживаемость";
 	format age age_group_f.;
 run; 
 
-proc phreg data=&LN..new_pt;
-	model TLive*i_death(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al
+
+proc freq data = &LN..new_pt;
+	table (new_gendercode age oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch new_normkariotip ldh_b)*i_rem /
+	chisq relrisk nopercent nocol;
+	format age age_group_f.;
+run;
+
+proc freq data = &LN..new_pt;
+	table i_rem ;
+run;
+
+/*proc freq data = &LN..new_pt;*/
+/*	table  age *i_rem /*/
+/*	chisq relrisk nopercent nocol;*/
+/*	format age triple_age_f.;*/
+/*run;*/
+
+/*proc freq data = &LN..new_pt;*/
+/*	table  age *i_rem /*/
+/*	chisq relrisk nopercent nocol;*/
+/*	format age age_group_f.;*/
+/*run;*/
+
+*;
+proc logistic data=&LN..new_pt plots(only)=roc(id=obs);
+class new_gendercode  oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch new_normkariotip ldh_b; *age;
+   model i_rem(event='1')=albumin_b new_gendercode  oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch new_normkariotip ldh_b
+                / selection=stepwise
+                  slentry=0.3
+                  slstay=0.15
+                  details;
+	title "Достижение полной ремиссии";
+/*	format age age_group_f.;*/
+	oddsratio new_gendercode;
+	oddsratio oll_class;
+	oddsratio new_group_risk; 
+	oddsratio l_b; 
+	oddsratio creatinine_b;
+	oddsratio bilirubin_b;
+	oddsratio albumin_b;
+	oddsratio d_ch;
+	oddsratio new_normkariotip;
+	oddsratio ldh_b;
+	effectplot;
+run;
+
+proc freq data = &LN..new_pt;
+	table (new_gendercode ageg oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch new_normkariotip ldh_b)*i_ind_death /
+	chisq relrisk nopercent nocol;
+	format age age_group_f.;
+run;
+
+proc freq data = &LN..new_pt;
+	table ( ageg  new_normkariotip )*i_ind_death /
+	chisq relrisk nopercent nocol;
+run;
+/*new_gendercode oll_class new_group_risk l_b bilirubin_b albumin_b d_ch  ldh_b new_normkariotip*/
+
+
+
+
+proc logistic data=&LN..new_pt plots(only)=roc(id=obs);
+class new_gendercode ageg oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch new_normkariotip ldh_b; *age;
+   model i_ind_death(event='1')=  ageg 
+                / selection=stepwise
+                  slentry=0.5
+                  slstay=0.2
+                  details;
+	title "Смерить в индукции";
+/*	format age age_group_f.;*/
+	oddsratio new_gendercode;
+	oddsratio oll_class;
+	oddsratio ageg;
+	oddsratio new_group_risk; 
+	oddsratio l_b; 
+	oddsratio creatinine_b;
+	oddsratio bilirubin_b;
+	oddsratio albumin_b;
+	oddsratio d_ch;
+	oddsratio new_normkariotip;
+	oddsratio ldh_b;
+	effectplot;
+run;
+
+
+data &LN..DK_pt;
+	set &LN..new_pt;
+	if new_normkariotip = 0;
+run;
+
+proc logistic data=&LN..DK_pt plots(only)=roc(id=obs);
+class new_gendercode ageg oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch ldh_b; *age;
+   model i_ind_death(event='1')= new_gendercode ageg oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch new_normkariotip ldh_b
+                / selection=stepwise
+                  slentry=0.3
+                  slstay=0.1
+                  details;
+	title "Смерить в индукции";
+/*	format age age_group_f.;*/
+	oddsratio new_gendercode;
+	oddsratio oll_class;
+	oddsratio ageg;
+	oddsratio new_group_risk; 
+	oddsratio l_b; 
+	oddsratio creatinine_b;
+	oddsratio bilirubin_b;
+	oddsratio albumin_b;
+	oddsratio d_ch;
+
+	oddsratio ldh_b;
+	effectplot;
+run;
+
+proc freq data = &LN..new_pt;
+	table i_death*new_normkariotip /
+	chisq relrisk nopercent nocol;
+run;
+
+%eventan (&LN..new_pt, TLive, i_death, 0,,&y,new_normkariotip,yn_e.," Стратификация по кариотипу. Безрецидивная выживаемость");
+
+data &LN..NED_pt;
+	set &LN..new_pt;
+	if i_ind_death = 0;
+run;
+%eventan (&LN..NED_pt, TLive, i_death, 0,,&y,new_normkariotip,yn_e.," Стратификация по кариотипу. Безрецидивная выживаемость");
+
+
+proc phreg data=&LN..NED_pt;
+	model TLive*i_death(0)= new_gendercode age oll_class new_group_risk ldh_b l_b new_normkariotip  
 / selection = stepwise slentry = .3 slstay = .15 details;  
 	title "Мультивариантный анализ. Общая выживаемость";
 	format age age_group_f.;
 run; 
 
 proc phreg data=&LN..new_pt;
-	model TRF*iRF(0)= new_gendercode age oll_class new_group_risk ldh_b l_b d_ch new_normkariotip FRint tkm_au_al Laspot
+	model TRF*iRF(0)= new_gendercode age oll_class new_group_risk ldh_b l_b new_normkariotip 
 	/ selection = s slentry = .3 slstay = .15;  
 	title "Мультивариантный анализ. Безрецидивная выживаемость";
 	format age age_group_f.;
 run; 
+
+
+proc freq data = &LN..new_pt;
+	table i_rem*i_ind_death /
+	chisq relrisk nopercent nocol;
+run;
+
+%eventan (&LN..new_pt, TRF, iRF, 0,,&y,ldh_b,,"B-oll. Стратификация по кариотипу. Безрецидивная выживаемость");

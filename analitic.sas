@@ -1154,7 +1154,7 @@ run;
 
 proc logistic data=&LN..new_pt plots(only)=roc(id=obs);
 class new_gendercode ageg oll_class new_group_risk l_b creatinine_b bilirubin_b albumin_b d_ch new_normkariotip ldh_b; *age;
-   model i_ind_death(event='1')=  ageg 
+   model i_ind_death(event='1')=  ageg new_normkariotip 
                 / selection=stepwise
                   slentry=0.5
                   slstay=0.2
@@ -1238,4 +1238,11 @@ proc freq data = &LN..new_pt;
 	chisq relrisk nopercent nocol;
 run;
 
-%eventan (&LN..new_pt, TRF, iRF, 0,,&y,ldh_b,,"B-oll. Стратификация по кариотипу. Безрецидивная выживаемость");
+%eventan (&LN..boll, TLive, i_death, 0,,&y,new_normkariotip,yn_e.,"B-oll. Стратификация по кариотипу. Общая выживаемость");
+%eventan (&LN..boll, Trel, i_rel, 0,F,&y,new_normkariotip,yn_e.,"B-oll. Стратификация по кариотипу. Вероятность развития рецидива"); *вероятность развития рецидива;
+
+%eventan (&LN..boll, TLive, i_death, 0,,&y,age,age_group_f.,"B-oll. Стратификация по возрасту. Общая выживаемость");
+%eventan (&LN..boll, TRF, iRF, 0,,&y,age,age_group_f.,"B-oll. Стратификация по возрасту. Безрецидивная выживаемость");
+
+%eventan (&LN..toll, TLive, i_death, 0,,&y,age,age_group_f.,"T-oll. Стратификация по возрасту. Общая выживаемость");
+%eventan (&LN..toll, TRF, iRF, 0,,&y,age,age_group_f.,"T-oll. Стратификация по возрасту. Безрецидивная выживаемость");

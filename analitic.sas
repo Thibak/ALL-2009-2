@@ -1246,3 +1246,32 @@ run;
 
 %eventan (&LN..toll, TLive, i_death, 0,,&y,age,age_group_f.,"T-oll. Стратификация по возрасту. Общая выживаемость");
 %eventan (&LN..toll, TRF, iRF, 0,,&y,age,age_group_f.,"T-oll. Стратификация по возрасту. Безрецидивная выживаемость");
+
+
+data t;
+	set &LN..toll;
+	if vr = 1;
+run;
+
+proc freq data = t;
+	table new_uvsredostenname/ nocum;
+	title "T-oll (заслуживающие доверия записи)";
+run;
+
+proc freq data = t;
+	table
+new_neyrolekname/ nocum;
+run;
+
+
+proc freq data = t;
+	table
+new_normkariotipname/ nocum;
+run;
+
+proc freq data = t;
+	table
+new_citogenname / nocum;
+run;
+
+

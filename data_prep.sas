@@ -25,6 +25,8 @@
 %mend;
 
 
+
+
 /*определитель ОС*/
 /*data comp;*/
 /*	OC = "&sysscpl";*/
@@ -36,6 +38,8 @@
 
 %let LN = ALL2009; * имя библиотеки;
 Libname &LN "&disk.:\AC\OLL-2009\SAS"; * Библиотека данных;
+filename tranfile "&disk.:\AC\OLL-2009\prep_lib\&sysdate9..stc"; * условный идентификатор транспортного файла;
+
 %let y = cl;
 %let cens = (20);
 *20, 27, 99, 132, 258, 264;
@@ -179,24 +183,24 @@ data cens;
 	if pt_id in &cens then output;
 run;
 
-proc print data = cens split='*' N;
-	var pt_id name;
-	label pt_id = 'Номер пациента*в протоколе'
-          name = 'Имя*в базе пациентов';
-	title "Из базы принудительно исключены следующие записи" ;
-run;
+/*proc print data = cens split='*' N;*/
+/*	var pt_id name;*/
+/*	label pt_id = 'Номер пациента*в протоколе'*/
+/*          name = 'Имя*в базе пациентов';*/
+/*	title "Из базы принудительно исключены следующие записи" ;*/
+/*run;*/
 
-data null;
-	set &LN..all_pt;
-	if pt_id = . then output;
-run;
-
-proc print data = null split='*' N;
-	var pt_id name;
-	label pt_id = 'Номер пациента*в протоколе'
-          name = 'Имя*в базе пациентов';
-	title "В базе не имеют номера в протоколе" ;
-run;
+/*data null;*/
+/*	set &LN..all_pt;*/
+/*	if pt_id = . then output;*/
+/*run;*/
+/**/
+/*proc print data = null split='*' N;*/
+/*	var pt_id name;*/
+/*	label pt_id = 'Номер пациента*в протоколе'*/
+/*          name = 'Имя*в базе пациентов';*/
+/*	title "В базе не имеют номера в протоколе" ;*/
+/*run;*/
 
 
 /*Исключаем записи повторного подтверждения ремиссии*/
@@ -255,15 +259,10 @@ run;
 data &LN..all_pt age_out; 
     set &LN..all_pt;
 	if age<=60 and age>=15 then output &LN..all_pt;
-	else output age_out;
+	else output &LN..age_out;
 run;
 
-proc print data = age_out;
-	var  pt_id name age; 
-	title  'По возрасту исключены';
-run; 
 
-footnote " ";
 
 
 
@@ -368,17 +367,7 @@ data &LN..error_ptVSet;
 	if it1 ne it2 then output; 
 run;
 
-proc print data = &LN..error_ptVSet split='*' N obs="Номер*ошибки";
-	var pt_id name name_e new_etap_protokolname it1 it2;
-	label pt_id = 'Номер пациента*в протоколе'
-          name = 'Имя*в базе пациентов'
-          name_e = 'Имя*в базе этапов'
-		  new_etap_protokolname = 'этап'
-		  it1 = 'Запись*в базе пациентов' 
-		  it2 = 'Запись* в базе этапов';
-	title "Ошибки в базе (пара пациент - этап)" ;
-	format  it1 it2 it_f. ; 
-run;
+
 
 /*----------------------------------------------------------------------------------------*/
 
@@ -481,6 +470,7 @@ data &LN..new_pt;
 			i_rel = 0; date_rel = .; rel_t = '';
 			Laspot = 0; 
 		end;
+	label date_death = "Дата смерти"
 run;
 
 
@@ -500,18 +490,9 @@ data &LN..new_pt;
 run;
 	
 /*Запаска на случай необходимости */
-data no_TR; 
+data &LN..no_TR; 
 	set &LN..new_pt;
 	if i_rem = 0 and i_ind_death = 0 and i_res = 0 then output;
-run;
-
-proc sort data = no_TR;
-	by pt_id;
-run;
-
-proc print data = no_TR;
-	var pt_id name;
-	title 'Нет результатов лечения для следующих пациентов';
 run;
 
 
@@ -684,9 +665,9 @@ run;
 Data &LN..new_pt;
     set &LN..new_pt;
     Select;
-        when (i_rem)       do; TR = 0; TR_date = date_rem;   end;
-        when (i_res)       do; TR = 1; TR_date = date_res;   end;
 		when (i_ind_death) do; TR = 2; TR_date = date_death; end;
+        when (i_res)       do; TR = 1; TR_date = date_res;   end;
+		when (i_rem)       do; TR = 0; TR_date = date_rem;   end;
         otherwise;
     end;
 run;
@@ -740,6 +721,11 @@ data &LN..LM;
 	end;
 run; 
 
+data &LN..new_pt;  
+	set &LN..new_pt;
+	TD = (lastdate - pr_b)/30;
+run;
+
 
 data &LN..vr_pt;
 	set &LN..new_pt;
@@ -760,405 +746,12 @@ data &LN..toll_LM;
 	set &LN..LM;
 	if (oll_class = 2);
 run;
-/*-----------------------------------------------------------------------------------------------------------*/
-/*-----------------------------------------------------------------------------------------------------------*/
-/*--------------------------------------------описательная статистика----------------------------------------*/
-/*-----------------------------------------------------------------------------------------------------------*/
-/*-----------------------------------------------------------------------------------------------------------*/
 
-
-proc means data = &LN..new_pt N;
-	var new_birthdate;
-   title 'Всего записей';
+data &LN..cito;
+	set &LN..toll ;
+	if new_citogen = 1;
 run;
 
-proc freq data=&LN..new_pt ORDER = DATA;
-   tables vr / nocum;
-   title 'Заслуживающих доверия записей (для которых проведены основные анализы)';
-run;
-
-proc means data = &LN..new_pt median max min ;
-   var age;
-   title 'Возраст больных (медиана, разброс)';
-run;
-
-
-proc freq data=&LN..new_pt ;
-   tables new_gendercodename / nocum;
-   title 'пол';
-run;
-
-
-proc sort data=&LN..new_pt;
-	by new_oll_class;
-run;
-
-proc freq data=&LN..new_pt ORDER = DATA;
-   tables new_oll_classname / nocum;
-   title 'Иммунофенотип (детально)';
-run;
-
-proc freq data=&LN..new_pt ; *информация о количестве;
-   tables oll_class / nocum;
-/*NOPERCENT;*/
-   title 'Иммунофенотип';
-   FORMAT oll_class oc_f.;
-run;
-
-
-
-proc freq data=&LN..new_pt ;
-   tables new_citogenname/ nocum;
-   title 'Цитогенетика';
-run;
-
-proc freq data=&LN..new_pt ;
-   tables new_normkariotipname/ nocum;
-   title 'Нормальный кариотип';
-run;
-
-proc freq data=&LN..new_pt ;
-   tables new_normkariotipname/ nocum;
-   title 'Хромосомные аномалии';
-run;
-
-
-proc freq data=&LN..new_pt ;
-   tables new_group_riskname/ nocum;
-   title 'Группа риска';
-run;
-
-proc freq data=&LN..new_pt ;
-   tables d_ch/ nocum;
-   title 'Смена на дексаметазон';
-   format d_ch y_n.;
-run;
-
-proc freq data=&LN..new_pt ;
-   tables i_rem/ nocum;
-   title 'Достижение ремиссии';
-   format i_rem y_n.;
-run;
-
-proc freq data=&LN..new_pt ;
-   tables i_rem/ nocum;
-   title 'Достижение ремиссии';
-   format i_rem y_n.;
-run;
-
-proc freq data=&LN..new_pt ;
-   tables i_rem*oll_class / nocum;
-   title 'Достижение ремиссии по фенотипу';
-   format i_rem y_n. oll_class oc_f.;
-run;
-
-
-proc freq data=&LN..new_pt ;
-   tables FRint/ nocum;
-   title 'Достижение ремиссии (по фазам)';
-   format FRint FRint_f.;
-run;
-
-proc freq data=&LN..new_pt ;
-   tables FRint*age/ nocum;
-   title 'Достижение ремиссии (по фазам)';
-   format FRint FRint_f. age age_group_f.;
-run;
-
-proc freq data=&LN..new_pt ;
-   tables i_ind_death/ nocum;
-   title 'Смерть на индукции';
-   format i_ind_death y_n.;
-run;
-
-proc freq data=&LN..new_pt ;
-   tables i_ind_death*age/ nocum;
-   title 'Смерть на индукции в зависимости от возрастной группы';
-   format i_ind_death y_n. age age_group_f.;
-run;
-
-proc freq data=&LN..new_pt ;
-   tables i_res/ nocum;
-   title 'Случаев резистентности';
-   format i_res y_n.;
-run;
-
-proc freq data=&LN..new_pt ;
-   tables TR/ nocum;
-   title 'Результат лечения';
-   format TR TR_f.;
-run;
-
-proc freq data=&LN..new_pt ;
-   tables TR*age/ nocum;
-   title 'Результат лечения в зависимости от возрастной группы';
-   format TR TR_f. age age_group_f.;
-run;
-
-data tmp;
-	set &LN..new_pt;
-	if new_oll_class in (5,6,7,8) and date_rem<date_tkm  then output;
-run;
-
-
-proc freq data=tmp ;
-   tables tkm_au_al/ nocum;
-   title 'Скольким пациентам с Т-ОЛЛ в ремиссии выполнена ауто-ТКМ';
-   format tkm_au_al tkm_au_al_f.;
-run;
-
-data tmp;
-	set &LN..new_pt;
-	if  date_rem<date_tkm  then output;
-run;
-
-
-proc freq data=tmp ;
-   tables tkm_au_al/ nocum;
-   title 'Скольким пациентам в ремиссии выполнена ауто-ТКМ';
-   format tkm_au_al tkm_au_al_f.;
-run;
-
-proc freq data=&LN..new_pt ;
-   tables ver_rel/ nocum;
-   title 'Верифицированные рецидивы (после ремиссий)';
-   format ver_rel y_n.;
-run;
-
-
-
-
-proc freq data=&LN..new_pt ;
-   tables i_rel*reg/ nocum;
-   title 'Рецидивы по регионам';
-   format i_rel y_n. reg reg_f.;
-run;
-
-data tmp;
-	set &LN..new_pt;
-	if  i_rem = 1;
-run;
-
-proc freq data=tmp;
-   tables i_rel*oll_class/ nocum;
-   title 'Рецидивы по фенотипам';
-   format i_rel y_n. oll_class oc_f.;
-run;
-
-
-proc freq data=tmp ;
-   tables i_rel/ nocum;
-   title 'Рецидивы';
-run;
-
-proc freq data=tmp ;
-   tables rel_t/ nocum;
-   title 'Рецидивы по типу';
-run;
-
-proc freq data=tmp ;
-   tables i_rel/ nocum;
-   title 'Рецидивы';
-run;
-
-
-proc freq data=&LN..vr_pt ;
-   tables  d_ch/ nocum;
-   title 'Смена на дексаметазон(достоверные записи)';
-   format d_ch y_n.;
-run;
-
-proc freq data=&LN..vr_pt ;
-   tables  new_group_riskname*age/ nocum;
-   title 'группы риска по возрастным группам (достоверные записи)';
-   format age age_group_f.;
-run;
-
-proc freq data=&LN..new_pt;
-   tables  d_ch*age/ nocum;
-   title 'Смена на дексаметазон в зависимости от возростных групп';
-   format d_ch y_n. age age_group_f.;
-run;
-
-data tmp;
-	set &LN..new_pt;
-	if TR ne .;
-run; 
-
-proc freq data=tmp;
-   tables  d_ch*new_group_riskname/ nocum;
-   title 'Смена на дексаметазон в зависимости от групп риска (для тех, у кого известен результат лечения)';
-   format d_ch y_n.;
-run;
-
-%eventan (&LN..new_pt, TLive, i_death, 0,,&y,,,"Выживаемость");
-%eventan (&LN..new_pt, TRF, iRF, 0,,&y,,,"Безрецидивная выживаемость");
-
-
-%eventan (&LN..new_pt, TLive, i_death, 0,,&y,age,age_group_f.,"стратификация по возрасту. Выживаемость");
-%eventan (&LN..new_pt, TRF, iRF, 0,,&y,age,age_group_f.,"стратификация по возрасту. Безрецидивная выживаемость");
-
-
-%eventan (&LN..toll_LM, TRF_LM, iRF, 0,,&y,tkm_au_al,tkm_au_al_en.,"T-oll. LM. Стратификация по виду лечения. Безрецидивная выживаемость");
-
-%eventan (&LN..new_pt, TRF, iRF, 0,,&y,new_group_risk,new_group_riskname_f.,"Стратификация по группам риска. Безрецидивная выживаемость");
-
-%eventan (&LN..boll, TLive, i_death, 0,,&y,new_normkariotip,yn_e.,"B-OLL. стратификация по кариотипу. Общая выживаемость");
-%eventan (&LN..boll, TRF, iRF, 0,,&y,new_normkariotip,yn_e.,"B-OLL. стратификация по кариотипу. Безрецидивная выживаемость");
-
-data CH_auTKM;
-	set &LN..toll;
-	if tkm_au_al in (0,1);
-run;
-%eventan (CH_auTKM, TRF, iRF, 0,,&y,new_normkariotip,yn_e.,"T-OLL. стратификация по кариотипу. Безрецидивная выживаемость");
-/*--------------------------*/
-
-%eventan (&LN..new_pt, TLive, i_death, 0,,&y,reg,reg_f.,"Выживаемость. ГНЦ vs регионы");
-%eventan (&LN..new_pt, TRF, iRF, 0,,&y,reg,reg_f.,"Безрецидивная выживаемость. ГНЦ vs регионы");
-
-data &LN..NHC;
-	set &LN..new_pt;
-	if reg=1;
-run;
-
-data &LN..toll_LM_NHC;
-	set &LN..toll_LM;
-	if reg=1;
-run;
-
-%eventan (&LN..NHC, TLive, i_death, 0,,&y,,,"ГНЦ. Выживаемость");
-%eventan (&LN..NHC, TRF, iRF, 0,,&y,,,"ГНЦ. Безрецидивная выживаемость");
-
-%eventan (&LN..NHC, TLive, i_death, 0,,&y,age,age_group_f.,"ГНЦ. стратификация по возрасту. Выживаемость");
-%eventan (&LN..NHC, TRF, iRF, 0,,&y,age,age_group_f.,"ГНЦ. стратификация по возрасту. Безрецидивная выживаемость");
-
-data CH_auTKM_LM;
-	set &LN..toll_LM_NHC;
-	if tkm_au_al in (0,1);
-run;
-
-%eventan (CH_auTKM_LM, TRF_LM, iRF, 0,,&y,tkm_au_al,tkm_au_al_en.,"ГНЦ. T-oll. LM. Стратификация по виду лечения. Безрецидивная выживаемость");
-
-proc means data = &LN..new_pt;
-	var TLive;
-   title 'Статистика по наблюдениям';
-run;
-
-
-data tmp;
-	set &LN..new_pt;
-	if i_death = 0;
-run;
-
-proc means data = tmp;
-	var i_death;
-   title 'Статистика по наблюдениям (исключены смерти)';
-run;
-
-data tmp;
-	set &LN..new_pt;
-	i = 0;
-	if date_rem<date_tkm then i = 1;
-	if tkm_au_al = 1;
-run;
-
-proc print data = tmp;
-	var pt_id name i_rem oll_class i date_rem date_tkm;
-   title '';
-   format oll_class oc_f.;
-run;
-
-/*data tmp;*/
-/*	set &LN..LM;*/
-/*	if i_rel = 1 and oll_class = 2;*/
-/*run;*/
-/**/
-/*proc sort data = tmp;*/
-/*	by TRF_LM;*/
-/*run;*/
-/**/
-/**/
-/*proc print  data = tmp;*/
-/*	var pt_id name age TRF_LM;*/
-/*run;*/
-
-
-/*-----------------------------------------*/
-/*data tmp;*/
-/*	set CH_auTKM_LM;*/
-/*	if tkm_au_al in (0,1);*/
-/*run;*/
-/**/
-/*proc sort data = tmp;*/
-/*	by tkm_au_al;*/
-/*run;*/
-/**/
-/**/
-/*proc means  data = tmp;*/
-/*	by tkm_au_al;*/
-/*	var age;*/
-/*run;*/
-
-
-proc means data = &LN..new_pt N min max p1 p10 p25 p50 p75 p90 p99 mean median;
-	var TLive;
-   title 'Наблюдение';
-run;
-
-proc sort data = &LN..new_pt;
-	by TLive;
-run;
-
-proc print data = &LN..new_pt;
-	var TLive;
-   title 'Наблюдение';
-run;
-
-
-data tmp;
-	set &LN..toll_LM;
-	if pt_id = 73 then i_rel = 0;
-	if tkm_au_al in (0,1);
-run;
-
-%eventan (tmp, Trel, i_rel, 0,F,&y,tkm_au_al,tkm_au_al_en.," Вероятность развития рецидива"); *вероятность развития рецидива;
-
-data &LN..new_pt;
-	set &LN..new_pt;
-	no_cito = 0;
-	if new_normkariotip = . then no_cito = 1;
-run;
-
-%eventan ( &LN..new_pt, TLive, i_death, 0,,&y,no_cito,,"нет цитогенетики. Выживаемость");
-%eventan ( &LN..new_pt, TRF, iRF, 0,,&y,no_cito,,"нет цитогенетики. Безрецидивная выживаемость");
-
-data tmp;
-	set &LN..new_pt;
-	if no_cito = 1 and new_citogen = 1;
-run;
-
-proc sort  data = tmp;
-	by pt_id;
-run;
-
-proc print data = tmp;
-	var pt_id name;
-run;
-
-/*-------------------------------------------------------------------------------------------------*/
-
-proc sort data = &LN..new_pt;
-	by reg;
-run;
-
-proc means data = &LN..new_pt N min max mean median;
-	by reg;
-	var age;
-   title 'Возраст';
-run;
-
-proc freq data=&LN..new_pt ;
-   tables TR*reg/ nocum;
-   title 'Результат лечения';
-   format TR TR_f. reg reg_f.;
+*загоняем в транспортный файл;
+proc cport library=&LN file=tranfile;
 run;

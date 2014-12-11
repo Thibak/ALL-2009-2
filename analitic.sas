@@ -1218,19 +1218,26 @@ data &LN..NED_pt;
 run;
 %eventan (&LN..NED_pt, TLive, i_death, 0,,&y,new_normkariotip,yn_e.," Стратификация по кариотипу. Безрецидивная выживаемость");
 
-
-proc phreg data=&LN..NED_pt;
-	model TLive*i_death(0)= new_gendercode age oll_class new_group_risk ldh_b l_b new_normkariotip  
-/ selection = stepwise slentry = .3 slstay = .15 details;  
-	title "Мультивариантный анализ. Общая выживаемость";
-	format age age_group_f.;
-run; 
+proc sort  data=&LN..new_pt;
+	by oll_class;
+run;
 
 proc phreg data=&LN..new_pt;
-	model TRF*iRF(0)= new_gendercode age oll_class new_group_risk ldh_b l_b new_normkariotip 
-	/ selection = s slentry = .3 slstay = .15;  
+	by oll_class;
+	model TLive*i_death(0)= new_gendercode age new_group_risk ldh_b l_b 
+/ selection = stepwise slentry = .3 slstay = .1 details;  
+	title "Мультивариантный анализ. Общая выживаемость";
+	format age age_group_f. oll_class oc_f.;
+run; 
+
+
+
+proc phreg data=&LN..new_pt;
+	by oll_class;
+	model TRF*iRF(0)= new_gendercode age new_group_risk ldh_b l_b reg tkm_au_al
+	/ selection = s slentry = .3 slstay = .1;  
 	title "Мультивариантный анализ. Безрецидивная выживаемость";
-	format age age_group_f.;
+	format age age_group_f.  oll_class oc_f.;
 run; 
 
 

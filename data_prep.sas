@@ -138,7 +138,26 @@ data &LN..all_et;
 		Modifiedby	= Modifiedby_et
 		Modifiedbyname	= Modifiedbyname_et
 		Modifiedon = Modifiedon_et
+		new_inf_comp_8 = pneumonia
+		new_inf_comp_6 = NEP
+		new_inf_comp_9 = sepsis
+		new_inf_comp_16 = invasp
+		new_aspor_vvod = a_vvod
+		new_aspor_pankr = a_pankr
+		new_aspor_gepat = a_gepat
+		new_aspor_narbelsint = a_narbelsint
+		new_aspor_tromb = a_tromb
+		new_aspor_occhuv = a_occhuv
+		new_aspor_perehod = a_perehod
+		new_aspor_otmena = a_otmena
+
         ;
+	label
+		pneumonia = 'пневмония'
+		NEP = 'Некротическая Энтеропатия'
+		sepsis = 'Сепсис'
+		invasp = 'Инвазивный аспергиллез'
+		;
 		run;
 data &LN..all_ev;
     set &LN..all_ev;
@@ -277,7 +296,24 @@ run;
 data &LN..new_pt /*(keep=)*/;
     set &LN..new_et;
     by pguid;
-    retain ec d_ch time_error preph_bg preph_end ind1bg ind1end ind2bg ind2end; *ec -- это количество этапов "свернутых";
+    retain 
+		ec d_ch time_error 
+		preph_bg preph_end 
+		ind1bg ind1end 
+		ind2bg ind2end
+		pneumonia_i
+		NEP_i
+		sepsis_i
+		invasp_i
+		a_vvod_i
+		a_pankr_i
+		a_gepat_i
+		a_narbelsint_i
+		a_tromb_i
+		a_occhuv_t
+		a_perehod_i
+		a_otmena_i
+		; *ec -- это количество этапов "свернутых";
     if first.pguid then 
 		do;  
 			ec = 0; 
@@ -289,6 +325,18 @@ data &LN..new_pt /*(keep=)*/;
 			ind1end = .; 
 			ind2bg = .; 
 			ind2end = .; 
+			pneumonia_i = 0; 
+			NEP_i = 0; 
+			sepsis_i = 0; 
+			invasp_i = 0; 
+			a_vvod_i = .; 
+			a_pankr_i = 0; 
+			a_gepat_i = 0; 
+			a_narbelsint_i = 0; 
+			a_tromb_i = 0; 
+			a_occhuv_t = .; 
+			a_perehod_i = 0; 
+			a_otmena_i = 0; 
 		end;
 /*--------------------------------------------------*/
     if it2 then ec + 1;
@@ -308,6 +356,19 @@ data &LN..new_pt /*(keep=)*/;
 	if new_etap_protokol = 2 then do; ind1bg = ph_b; ind1end = ph_e; end;
 	if new_etap_protokol = 3 then do; ind2bg = ph_b; ind2end = ph_e; end;
 
+	if 	pneumonia = 1 then pneumonia_i = 1; 
+	if 	NEP = 1 then NEP_i = 1; 
+	if 	sepsis = 1 then sepsis_i = 1;
+	if 	invasp = 1 then invasp_i = 1; 
+
+	if	a_vvod ne . then a_vvod_i = a_vvod;
+	if 	a_pankr = 1 then a_pankr_i = 1;
+	if 	a_gepat = 1 then a_gepat_i = 1;
+	if 	a_narbelsint = 1 then a_narbelsint_i = 1;
+	if 	a_tromb = 1 then a_tromb_i = 1; 
+	if 	a_occhuv ne . then a_occhuv_t = a_occhuv;
+	if 	a_perehod = 1 then a_perehod_i = 1;
+	if 	a_otmena = 1 then a_otmena_i = 1;
 
 /*---------------------------------------------------*/
     if last.pguid then
@@ -322,9 +383,35 @@ data &LN..new_pt /*(keep=)*/;
 			ind1bg = .; 
 			ind1end = .; 
 			ind2bg = .; 
-			ind2end = .; 
+			ind2end = .;
+			pneumonia_i = 0; 
+			NEP_i = 0; 
+			sepsis_i = 0; 
+			invasp_i = 0;  
+			a_vvod_i = .; 
+			a_pankr_i = 0; 
+			a_gepat_i = 0; 
+			a_narbelsint_i = 0; 
+			a_tromb_i = 0; 
+			a_occhuv_t = .; 
+			a_perehod_i = 0; 
+			a_otmena_i = 0; 
         end;
-	label d_ch = "Смена на дексаметазон";
+	label 
+		d_ch = "Смена на дексаметазон"
+		pneumonia_i = 'Пневмония'
+		NEP_i = 'Некротическая Энтеропатия'
+		sepsis_i =  'Сепсис'
+		invasp_i =   'Инвазивный аспергиллез'
+		a_vvod_i = "На каком по счету введении (с момента начала лечения по протоколу) (Токсичность на аспарагиназу)"
+		a_pankr_i = 'Панкреатит на Л-асп (Токсичность на аспарагиназу)'
+		a_gepat_i = 'Гепатит (билир, АЛТ, АСТ) (Токсичность на аспарагиназу)'
+		a_narbelsint_i = 'Нарушение белк.синт. Функции (ПИ, фибр, АТ III, Альб) (Токсичность на аспарагиназу)'
+		a_tromb_i = 'Тромбозы (Токсичность на аспарагиназу)'
+		a_occhuv_t = 'Оценка выраженности гиперчувствительности к аспарагиназе (Токсичность на аспарагиназу)'
+		a_perehod_i = 'Переход на ПЭГ - аспарагиназу (Токсичность на аспарагиназу)'
+		a_otmena_i =  'Отмена аспарагиназы на все послед. этапы лечения (Токсичность на аспарагиназу)'
+		;
 run;
 
 data &LN..new_pt;
@@ -411,6 +498,7 @@ data &LN..new_pt;
 		i_res date_res /**/ 
 		i_dev  dev_t
 		i_off off_t 
+
 		Laspot;
     if first.pguid then 
 		do; 
@@ -489,13 +577,7 @@ data &LN..new_pt;
 run;
 
 
-/*Вычисляем производный показатель "результат терапии"*/
-/*value tr_result 0 = 'полная ремиссия на предфазе' */
-/*data &LN..new_pt;*/
-/*	set &LN..new_pt;*/
-/*	select;*/
-/*	when 	tr_result  = */
-/*run;*/
+
 
 
 *убираем цензурированные записи;
@@ -512,7 +594,8 @@ run;
 
 
 /*поставить заплатку если время рецидива равно нулю то сегодняшняя дата <----------- ЕСТЬ ЛИ ЭТО????*/
-/*обновление последнего контакта за счет смерти*/  
+/*обновление последнего контакта за счет смерти*/ 
+/*всякие досчеты */
 Data &LN..new_pt;
     set &LN..new_pt;
 	if time_error = . then 
@@ -531,6 +614,12 @@ Data &LN..new_pt;
 	ver_rel = 0;
 	if i_rel = 1 then ver_rel = 1;
 	year = year(pr_b);
+	if 
+		new_peref_ulu = 1 or
+		new_vnutrigrud_ulu = 1 or
+		new_abdomi_ulu = 1 
+	then lap = 1; else lap = 0;
+	label lap = 'Лимфаденопатия'
 run;
 
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/

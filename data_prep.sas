@@ -41,7 +41,13 @@ Libname &LN "&disk.:\AC\OLL-2009\SAS"; * Библиотека данных;
 filename tranfile "&disk.:\AC\OLL-2009\prep_lib\&sysdate9..stc"; * условный идентификатор транспортного файла;
 
 %let y = cl;
-%let cens = (20);
+%let cens = (20,73,25);
+/*Исключаем - Марханова, Позднякова, Чубукова*/
+/*25 -- Марханов (Марханов был снят с протокола еще в 10-м году (его лечили бог знает как).)*/
+/*73 -- Чубуков (у Чубукова вообще другой диагноз - миелоидная саркома)*/
+/*266	Дмитровский В.Б. -- Дмитровского не надо исключать - у него только правильно не отмечено время достижения полной ремиссии и дата ТКМ. Он правильный больной с неправильными датами*/
+/*20	Поздняков Нет данных Нет данных*/
+/*27 -- Головнитцына -- Головнитцына включена, но умерла до лечения. Ее исходне данные можно включать, а в анализе выживаемости и результатах лечения не участвует.*/
 *20, 27, 99, 132, 258, 264;
 
 %macro Eventan(dat,T,C,i,s,cl,f,for, ttl);
@@ -87,42 +93,7 @@ ods graphics off;
 %mend;
 
 
-proc format;
-    value oc_f  1 = "B-клеточный" 2 = "T-клеточный" 3 = "Бифенотипический" 0 = "Неизвестен" ;
-    value gender_f 1 = "Мужчины" 2 = "Женщины";
-    value risk_f 1 = "Стандартная" 2 = "Высокая" 3 = "нет данных";
-    value age_group_28_f low-28 = "до 28-ми лет" 28-high = "после 28-ми лет";
-    value age_group_30_f low-30 = "до 30-ти лет" 30-high = "после 30-ти лет";
-    value age_group_33_f low-33 = "до 33-х лет" 33-high = "после 33-х лет";
-	value age_group_f low-29 = "AYA" 29-high = "Adult";
-	value triple_age_f low-30 = "1" 30-40 = "2" 40-high = "3";
-	value tkm_f 0="нет" 1="ауто" 2="алло";
-	value it_f 1="есть" 0 = "нет";
-	value time_error_f . = "нет ошибок" 
-		0 = "дата последнего визита не заполнена" 
-		1 = "дата последнего события (этапа) больше чем дата последнего контакта" 
-		2 = "дата ремиссии больше даты последнего контакта" 
-		3 = "дата рецедива больше даты последнего контакта"
-		4 = "date bmt > lastdate";
 
-/*	  if date_rem > lastdate then do; time_error = 2; lastdate = date_rem; end;*/
-/*    if date_rel > lastdate then do; time_error = 3; lastdate = date_rel; end;*/
-	value new_group_risk_f 1 = "стандартная" 2 = "высокая";
-	value y_n 0 = "нет" 1 = "да";
-	value yn_e 0 = "no" 1 = "yes";
-	value au_al_f 1 = "ауто" 2 = "алло - родственная" ;
-	value reg_f 0 = "Регионы" 1 = "ГНЦ"; 
-	value T_class12_f 0 = "T1+T2" 1 = "T3" 2 = "T4";
-	value T_class124_f 0 = "T1+T2+T4" 1 = "T3";
-	value TR_f 0 = "Полная ремиссия" 1 = "Резистентная форма" 2 = "Смерть в индукции";
-	value BMinv_f 0 = "Без поражения" 1 = "С поражением";
-	value AAC_f 0 = "Химиотерапия" 1 = "Ауто ТКМ" 2 = "Алло ТКМ" 3 = "Ранний рецидив" 4 = "Смерть в ремиссии" 5 = "на индукции (T < 5 мес)";
-	value FRint_f 1 = "ПР на предфазе" 2 = "ПР на 1-ой фазе индукции" 3 = "ПР на 2-ой фазе индукции" 19 = "Контролькое обследование";
-	value BMT_f 0 = "Химиотерапия" 1 = "ТКМ";
-	value tkm_au_al_f 0 = "Химиотерапия" 1="Ауто-ТКМ" 2="Алло-ТКМ";
-	value tkm_au_al_en 0 = "chemo" 1="auto-HSCT" 2="allo-HSCT";
-	value new_group_riskname_f 1 = 'Standard' 2 = 'Hi';
-run;
 
 /*------------ препроцессинг восстановления реляций и целостности данных ---------------*/
 data &LN..all_pt;
@@ -139,8 +110,17 @@ data &LN..all_pt;
 	label 
 		new_group_risk = "группа риска"
 		new_normkariotip = "Normal karyotype"
+		pt_id = 'идентификатор'
+		name = 'имя'
+		i_death = 'смерть'
+		i_ind_death = 'смерть в индукции'
+		i_rel = 'рецедив'
+		i_dev = 'отклонение от протокола'
+		dev_t = 'отклонения - комментариий'
+		i_off = 'преждевременное снятие с протокола'
+		off_t = 'снятие -- комментарий'
 		;
-		run;
+run;
 data &LN..all_et;
     set &LN..all_et;
     rename
@@ -178,7 +158,7 @@ data &LN..all_ev;
 /*------ цензурирование, и вычисление производных показателей ----------*/
 
 
-data cens;
+data &LN..cens;
 	set &LN..all_pt;
 	if pt_id in &cens then output;
 run;
@@ -256,7 +236,7 @@ if age = . then age = floor(yrdif(new_birthdate, pr_b,'AGE'));  *если возраста н
     if NOT (pt_id in &cens ) then output;
 run;
 
-data &LN..all_pt age_out; 
+data &LN..all_pt &LN..age_out; 
     set &LN..all_pt;
 	if age<=60 and age>=15 then output &LN..all_pt;
 	else output &LN..age_out;
@@ -424,7 +404,14 @@ run;
 data &LN..new_pt;
     set &LN..new_ev;
     by pguid;
-    retain i_rem date_rem FRint /**/ i_death date_death i_ind_death /**/i_tkm date_tkm tkm_au_al/**/ i_rel date_rel rel_t/**/ i_res date_res /**/ Laspot;
+    retain i_rem date_rem FRint /**/ 
+		i_death date_death i_ind_death /**/
+		i_tkm date_tkm tkm_au_al/**/ 
+		i_rel date_rel rel_t/**/ 
+		i_res date_res /**/ 
+		i_dev  dev_t
+		i_off off_t 
+		Laspot;
     if first.pguid then 
 		do; 
 			i_rem = 0; date_rem = .; FRint = .; 
@@ -432,6 +419,8 @@ data &LN..new_pt;
 			i_death = 0; date_death = .; i_ind_death = 0; 
 			i_tkm = 0; date_tkm = .; tkm_au_al = 0;
 			i_rel = 0; date_rel = .; rel_t = '';
+			i_dev = 0; dev_t = '';
+			i_off = 0; off_t = '';
 			Laspot = 0; 
 		end;
 /*----------------------------------*/
@@ -459,6 +448,18 @@ data &LN..new_pt;
 	 if new_event_txt in ("алло - родственная","алло - неродственная")  then tkm_au_al = 2;
     if new_event = 5 then do; i_rel = 1; date_rel = new_event_date; rel_t = new_event_txt; end;
 	if new_aspor_otmena = 1 then laspot = 1;
+	if new_event = 6 then do; 
+			i_dev = 1; 
+			dev_t = new_event_txt; 
+			if new_event_txt = "Отказ от лечения" then do;
+				lastdate = new_event_date;
+				if date_rel > lastdate then i_rel = 0;
+				if date_rem > lastdate then i_rem = 0;
+				if date_tkm > lastdate then i_tkm = 0;
+				if date_death > lastdate then i_death = 0;
+				END;
+			end;
+	if new_event = 7 then do; i_off = 1; off_t = new_event_txt; end;
 /*---------------------------------*/
     if last.pguid then 
 		do; 
@@ -468,9 +469,23 @@ data &LN..new_pt;
 			i_death = 0; date_death = .; i_ind_death = 0; 
 			i_tkm = 0; date_tkm = .; tkm_au_al = 0;
 			i_rel = 0; date_rel = .; rel_t = '';
+			i_dev = 0; dev_t = '';
+			i_off = 0; off_t = '';
 			Laspot = 0; 
 		end;
 	label date_death = "Дата смерти"
+		new_group_risk = "группа риска"
+		new_normkariotip = "Normal karyotype"
+		pt_id = "идентификатор"
+		name = "имя"
+		i_death = "смерть"
+		i_ind_death = "смерть в индукции"
+		i_rel = "рецедив"
+		i_dev = "отклонение от протокола"
+		dev_t = "отклонения - комментариий"
+		i_off = "преждевременное снятие с протокола"
+		off_t = "снятие -- комментарий"
+		;
 run;
 
 
@@ -515,6 +530,7 @@ Data &LN..new_pt;
 	if i_death = 1 and time_error = 0 then time_error = .;
 	ver_rel = 0;
 	if i_rel = 1 then ver_rel = 1;
+	year = year(pr_b);
 run;
 
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
@@ -547,7 +563,10 @@ Data &LN..new_pt;
         otherwise;
     end;
 
-	if (i_tkm) then Ttkm = (date_tkm - date_rem)/30;
+	if (i_tkm) then do;
+			Ttkm = (date_tkm - date_rem)/30;
+			tkm_dur = (date_tkm - pr_b)/30;
+			end;
 run;
 
 /*Безрецедивная выживаемость*/
@@ -670,7 +689,11 @@ Data &LN..new_pt;
 		when (i_rem)       do; TR = 0; TR_date = date_rem;   end;
         otherwise;
     end;
+	if new_normkariotip = 0 and new_t922 in (.,0) and new_bcrabl in (.,0) and new_t411name in (.,0) then kario = 1;
+	if new_normkariotip = 1 or new_t922 = 1 or new_bcrabl  = 1 or new_t411name  = 1 then kario = 0;
 run;
+
+
 
 *---------        ауто/алло/хемо         ---------;
 
@@ -696,7 +719,7 @@ run;
 data &LN..NLM;
 	set &LN..new_pt;
 	if not(TR = 0 and (TRF > 6 or tkm_au_al in (1,2)));
-	if pr_b > mdy(08,01,13) then onT = 1; else onT = 0;
+	if pr_b > mdy(06,01,14) then onT = 1; else onT = 0;
 run;
 
 data &LN..LM;
@@ -726,7 +749,6 @@ data &LN..new_pt;
 	TD = (lastdate - pr_b)/30;
 run;
 
-
 data &LN..vr_pt;
 	set &LN..new_pt;
 	if vr;
@@ -735,6 +757,27 @@ run;
 data &LN..boll;
 	set &LN..new_pt;
 	if (oll_class = 1);
+run;
+
+
+data &LN..boll_LM;
+	set &LN..LM;
+	if (oll_class = 2);
+run;
+
+data &LN..boll_NLM;
+	set &LN..NLM;
+	if (oll_class = 2);
+run;
+
+data &LN..bcito;
+	set &LN..boll ;
+	if new_citogen = 1;
+run;
+
+data &LN..boll_LM_xa;
+	set &LN..boll_LM;
+	if tkm_au_al in (0,1);
 run;
 
 data &LN..toll;
@@ -747,11 +790,38 @@ data &LN..toll_LM;
 	if (oll_class = 2);
 run;
 
-data &LN..cito;
+data &LN..toll_NLM;
+	set &LN..NLM;
+	if (oll_class = 2);
+run;
+
+data &LN..tcito;
 	set &LN..toll ;
 	if new_citogen = 1;
 run;
 
+data &LN..tLMcito;
+	set &LN..toll_LM ;
+	if new_citogen = 1;
+run;
+
+
+data &LN..toll_LM_xa;
+	set &LN..toll_LM;
+	if tkm_au_al in (0,1);
+run;
+
+
+
 *загоняем в транспортный файл;
 proc cport library=&LN file=tranfile;
 run;
+
+/**/
+/*proc sort data=all2009.new_pt;*/
+/*	by pt_id;*/
+/*run;*/
+/**/
+/*proc print data=all2009.new_pt;*/
+/*	var pt_id name;*/
+/*run;*/
